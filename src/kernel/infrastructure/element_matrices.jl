@@ -257,24 +257,6 @@ function DSS(SD::NSD_1D, QT::Inexact, Ae::AbstractArray, conn, nelem, npoin, N, 
     return A, Ainv
 end
 
-
-function DSS(SD::NSD_1D, QT::Inexact, Ae::AbstractArray, conn, nelem, npoin, N, T)
-
-    A = zeros(npoin)
-    Ainv = zeros(npoin)
-    
-    for iel=1:nelem
-        for i=1:N+1
-            I = conn[i,iel]
-            A[I] = A[I] + Ae[i,iel]
-        end
-    end
-    Ainv = 1.0./A
-    
-    return A, Ainv
-end
-
-
 function DSS(SD::NSD_2D, QT::Inexact, Ae::AbstractArray, conn::AbstractArray, nelem, npoin, N, T)
 
     A  = zeros(npoin)
