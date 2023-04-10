@@ -38,7 +38,7 @@ function plot_results(SD::NSD_1D, mesh::St_mesh, q::Array, title::String, OUTPUT
                                           markersize = 10, markercolor="Blue",
                                           xlabel = "x", ylabel = "q(x)",
                                           fontsize = 24, fonts = (; regular = "Dejavu", weird = "Blackchancery"),
-                                          axis = (; aspect = 1, limits = (xmin, xmax, -0.5, 1.0)))
+                                          axis = (; aspect = 1, limits = (xmin, xmax, qmin, qmax*epsi)))
         
         fout_name = string(OUTPUT_DIR, "/ivar", ivar, "-it", iout, ".png")        
         save(string(fout_name), fig; resolution = (600, 400))
@@ -95,7 +95,8 @@ function plot_surf3d(SD::NSD_2D, mesh::St_mesh, q::Array, title::String, OUTPUT_
 
         #figure:
         fig = Figure(resolution=(1200, 400))
-        axs = [Axis3(fig[1, i]; aspect=(1, 1, 1)) for i = 1:1]
+        axs = [Axis3(fig[1, i]; aspect=(1, 1, 1), limits = (-1, 1, -1, 1, 0.5, 1.0)) for i = 1:1]
+        #axs = [Axis3(fig[1, i]; aspect=(1, 1, 1)) for i = 1:1]
         
         hm = Makie.surface!(axs[1], xg, yg, zspl) # legend=:false, xl="x", yl="y", zl=string("q", ivar)) #, title=title, titlefont=12)
 

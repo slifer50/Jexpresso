@@ -1,6 +1,8 @@
 # JEXPRESSO
 A research and educational software for the numerical solution of 1D, 2D, and 3D PDEs using spectral and spectral element methods on CPUs and GPUs. DISCLAIMER: this is WIP.
 
+<img src="./misc/jexpressologo.png" alt="jexpresso_logo" title="jexpresso_logo">
+
 If you are interested in contributing, please get in touch.
 
 # Some notes on using JEXPRESSO
