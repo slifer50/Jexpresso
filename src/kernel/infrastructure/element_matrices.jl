@@ -490,7 +490,7 @@ function DSS_rhs(SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npo
 end
 
 
-function DSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
+function newDSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
 
     for ieq = 1:neqs
         for iel = 1:nelem
@@ -507,7 +507,7 @@ function DSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::Abstr
     #show(stdout, "text/plain", V)
 end
 
-function DSS_rhs_or!(SD::NSD_2D, V::SubArray{Float64}, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
+function DSS_rhs!(SD::NSD_2D, V::SubArray{Float64}, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
     
     for iel = 1:nelem
         for j = 1:N+1
@@ -527,27 +527,28 @@ function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Exact)
     RHS = M\RHS #M is not iagonal
 end
 
-function divive_by_mass_matrix2d!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
+function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
 
-    lengthM = length(M)
+    npoin = length(M)
     for i = 1:neqs
-        for j = 1:lengthM
+        for j = 1:npoin
             RHS[j, i] /= M[j]
         end
     end
+   #= 
+    for ieq=1:neqs
+       idx = (ieq-1)*npoin
     
-   # for i=1:neqs 
-   #    RHS[:,i] .= RHS[:,i]./M[:] #M is diagonal (stored as a vector)
-   #end
+       RHS[idx+1:ieq*mesh.npoin] /= M[1:npoin]
+    
+        end
+    =#
 end
 
-function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
-
-    @info length(M)
-    lengthM = length(M)
-    @info lengthM
-
-error("SAASSA")
+function newdivive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
+    
+    npoin = length(M)
+    error("SAASSA")
     
     for i = 1:neqs
         idx = (i-1)*mesh.npoin

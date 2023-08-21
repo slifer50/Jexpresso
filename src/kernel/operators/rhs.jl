@@ -37,29 +37,22 @@ include(user_source_dir)
 #---------------------------------------------------------------------------
 function rhs!(du, u, params, time)
 
-   # for i=1:params.neqs
-   #     idx = (i-1)*params.mesh.npoin
-   #     RHS[:,i] = view(du, idx+1:i*params.mesh.npoin)
-   # end
+    RHS = build_rhs(params.SD, params.QT, params.PT,
+                    u,
+                    params.neqs,
+                    params.basis, params.ω,
+                    params.mesh, params.metrics,
+                    params.M, params.De, params.Le,
+                    time,
+                    params.inputs, params.Δt, params.deps, params.T;
+                    qnm1=params.qnm1, qnm2=params.qnm2, μ=params.μ)
+    for i=1:params.neqs
+        idx = (i-1)*params.mesh.npoin
+        du[idx+1:i*params.mesh.npoin] = @view RHS[:,i]
+    end  
+    return du #This is already DSSed
     
-    @time build_rhs!(du, params.SD, params.QT, params.PT,
-                     u,
-                     params.neqs,
-                     params.basis, params.ω,
-                     params.mesh, params.metrics,
-                     params.M, params.De, params.Le,
-                     time,
-                     params.inputs, params.Δt, params.deps, params.T;
-                     qnm1=params.qnm1, qnm2=params.qnm2, μ=params.μ)
     
-   # for i=1:params.neqs
-   #     idx = (i-1)*params.mesh.npoin
-   #     du[idx+1:i*params.mesh.npoin] = view(RHS, [:,i])
-   # end
-    if(time > 0.0)
-        error("qui") #SM remove this after debugging!
-    end
-    #return du #This is already DSSed
 end
 
 ##
@@ -187,7 +180,7 @@ function inviscid_rhs_el!(F, G, S, rhs_el, qq, qp, SD::NSD_2D, mesh, metrics, ba
     end
 end
 
-function _build_rhs!(RHS, SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
+function _build_rhs(SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
                     mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
                     qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
     
@@ -197,8 +190,8 @@ function _build_rhs!(RHS, SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, �
     rhs_el      = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, neqs)
     rhs_diff_el = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, neqs)
     qq          = zeros(T, mesh.npoin,neqs)
-    #RHS         = zeros(T, mesh.npoin, neqs)
-    #RHS_visc    = zeros(T, mesh.npoin, neqs)
+    RHS         = zeros(T, mesh.npoin, neqs)
+    RHS_visc    = zeros(T, mesh.npoin, neqs)
     #for i=1:neqs
     #    idx = (i-1)*mesh.npoin
     #    RHS[:,i]  = view(du, idx+1:i*mesh.npoin)
@@ -209,8 +202,8 @@ function _build_rhs!(RHS, SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, �
     #
     inviscid_rhs_el!(F, G, S, rhs_el, qq, qp, SD, mesh, metrics, basis, ω; neqs, lsource=inputs[:lsource])
     apply_boundary_conditions!(SD, rhs_el, qq, mesh, inputs, QT, metrics, basis.ψ, basis.dψ, ω, Δt, neqs)
-#    DSS_rhs!(SD, @view(RHS[:,:]), rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
-    DSS_rhs!(SD, RHS, rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
+    DSS_rhs!(SD, @view(RHS[:,:]), rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
+    #DSS_rhs!(SD, RHS, rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
     
     #
     # Viscous part:
@@ -263,11 +256,11 @@ end
 #
 # Optimized (more coud possibly be done)
 #
-function build_rhs!(RHS, SD::NSD_2D, QT::Inexact, PT::CompEuler, qp::Array, neqs, basis, ω,
+function build_rhs(SD::NSD_2D, QT::Inexact, PT::CompEuler, qp::Array, neqs, basis, ω,
                    mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
                    qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
     
-    _build_rhs!(RHS, SD, QT, PT, qp, neqs, basis, ω, mesh, metrics, M, De, Le, time, inputs, Δt, deps, T; qnm1=qnm1, qnm2=qnm2, μ=μ)
+    RHS = _build_rhs(SD, QT, PT, qp, neqs, basis, ω, mesh, metrics, M, De, Le, time, inputs, Δt, deps, T; qnm1=qnm1, qnm2=qnm2, μ=μ)
 
     #return RHS
 end
