@@ -57,14 +57,14 @@ end
 function rhs!(du, u, params, time)
 
     build_rhs!(du, params.SD, params.QT, params.PT,
-                      u,
-                      params.neqs,
-                      params.basis, params.ω,
-                      params.mesh, params.metrics,
-                      params.M, params.De, params.Le,
-                      time,
-                      params.inputs, params.Δt, params.deps, params.T;)
-                      qnm1=params.qnm1, qnm2=params.qnm2, μ=params.μ)
+               u,
+               params.neqs,
+               params.basis, params.ω,
+               params.mesh, params.metrics,
+               params.M, params.De, params.Le,
+               time,
+               params.inputs, params.Δt, params.deps, params.T;
+               qnm1=params.qnm1, qnm2=params.qnm2, μ=params.μ)
     
     #return du #This is already DSSed
 end
