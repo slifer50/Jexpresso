@@ -35,7 +35,7 @@ end
 include(user_flux_dir)
 include(user_source_dir)
 #---------------------------------------------------------------------------
-function rhs!(du, u, params, time)
+function or_rhs!(du, u, params, time)
 
     RHS = build_rhs(params.SD, params.QT, params.PT,
                     u,
@@ -49,10 +49,24 @@ function rhs!(du, u, params, time)
     for i=1:params.neqs
         idx = (i-1)*params.mesh.npoin
         du[idx+1:i*params.mesh.npoin] = @view RHS[:,i]
-    end  
+    end
+    
     return du #This is already DSSed
+end
+
+function rhs!(du, u, params, time)
+
+    build_rhs!(du, params.SD, params.QT, params.PT,
+                      u,
+                      params.neqs,
+                      params.basis, params.ω,
+                      params.mesh, params.metrics,
+                      params.M, params.De, params.Le,
+                      time,
+                      params.inputs, params.Δt, params.deps, params.T;)
+                      qnm1=params.qnm1, qnm2=params.qnm2, μ=params.μ)
     
-    
+    #return du #This is already DSSed
 end
 
 ##
@@ -180,7 +194,69 @@ function inviscid_rhs_el!(F, G, S, rhs_el, qq, qp, SD::NSD_2D, mesh, metrics, ba
     end
 end
 
-function _build_rhs(SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
+function _build_rhs!(du, SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
+                    mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
+                    qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
+    
+    F           = zeros(T, mesh.ngl, mesh.ngl, neqs)
+    G           = zeros(T, mesh.ngl, mesh.ngl, neqs)
+    S           = zeros(T, mesh.ngl, mesh.ngl, neqs)
+    rhs_el      = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, neqs)
+    #rhs_diff_el = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, neqs)
+    qq          = zeros(T, mesh.npoin,neqs)
+    #RHS         = zeros(T, mesh.npoin, neqs)
+    #RHS_visc    = zeros(T, mesh.npoin, neqs)
+    #for i=1:neqs
+    #    idx = (i-1)*mesh.npoin
+    #    RHS[:,i]  = view(du, idx+1:i*mesh.npoin)
+    #end
+    
+    #
+    # Inviscid part:
+    #
+    inviscid_rhs_el!(F, G, S, rhs_el, qq, qp, SD, mesh, metrics, basis, ω; neqs, lsource=inputs[:lsource])
+    apply_boundary_conditions!(SD, rhs_el, qq, mesh, inputs, QT, metrics, basis.ψ, basis.dψ, ω, Δt, neqs)
+
+    #or_DSS_rhs!(SD, @view(RHS[:,:]), rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
+    DSS_rhs!(@view(du[:]), SD, rhs_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
+    
+    #
+    # Viscous part:
+    #
+#=    if (inputs[:lvisc] == true)
+        
+        if (lowercase(inputs[:visc_model]) === "dsgs")
+            
+            if (rem(time, Δt) == 0 && time > 0.0)
+                qnm1 .= qnm2
+                qnm2 .= qq
+            end
+            
+            compute_viscosity!(μ, SD, PT, qq, qnm1, qnm2, RHS, Δt, mesh, metrics, T)
+        else
+            μ[:] .= inputs[:νx]
+        end
+        for i=1:neqs
+            idx = (i-1)*mesh.npoin
+            for j=1:mesh.npoin
+                qp[idx+j] = qq[j,i]
+            end
+        end
+
+        build_rhs_diff!(@view(rhs_diff_el[:,:,:,:]), SD, QT, PT, qp, neqs, basis, ω, inputs, mesh, metrics, μ, T;)
+        
+        DSS_rhs!(SD, @view(RHS_visc[:,:]), rhs_diff_el, mesh.connijk, mesh.nelem, mesh.npoin, neqs, mesh.nop, T)
+        RHS .= RHS .+ RHS_visc
+        
+    end
+    =#
+    
+    divive_by_mass_matrix!(du, M, QT,neqs)
+    
+    #return du
+end
+
+function _or_build_rhs(SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
                     mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
                     qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
     
@@ -241,6 +317,7 @@ function _build_rhs(SD::NSD_2D, QT::Inexact, PT, qp::Array, neqs, basis, ω,
     return RHS
 end
 
+
 #--------------------------------------------------------------------------------------------------------------------------------------------------
 # CompEuler:
 #--------------------------------------------------------------------------------------------------------------------------------------------------
@@ -256,13 +333,20 @@ end
 #
 # Optimized (more coud possibly be done)
 #
-function build_rhs(SD::NSD_2D, QT::Inexact, PT::CompEuler, qp::Array, neqs, basis, ω,
+function build_rhs!(du, SD::NSD_2D, QT::Inexact, PT::CompEuler, qp::Array, neqs, basis, ω,
+                   mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
+                   qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
+    
+    @time _build_rhs!(du, SD, QT, PT, qp, neqs, basis, ω, mesh, metrics, M, De, Le, time, inputs, Δt, deps, T; qnm1=qnm1, qnm2=qnm2, μ=μ)
+
+end
+function orbuild_rhs(SD::NSD_2D, QT::Inexact, PT::CompEuler, qp::Array, neqs, basis, ω,
                    mesh::St_mesh, metrics::St_metrics, M, De, Le, time, inputs, Δt, deps, T;
                    qnm1=zeros(Float64,1,1), qnm2=zeros(Float64,1,1), μ=zeros(Float64,1,1))
     
     RHS = _build_rhs(SD, QT, PT, qp, neqs, basis, ω, mesh, metrics, M, De, Le, time, inputs, Δt, deps, T; qnm1=qnm1, qnm2=qnm2, μ=μ)
 
-    #return RHS
+    return RHS
 end
 
 

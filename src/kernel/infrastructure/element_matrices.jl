@@ -490,7 +490,7 @@ function DSS_rhs(SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npo
 end
 
 
-function newDSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
+function DSS_rhs!(du::AbstractArray, SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
 
     for ieq = 1:neqs
         for iel = 1:nelem
@@ -499,7 +499,7 @@ function newDSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::Ab
                     #I = conn[i,j,iel]
                     I1d = (ieq - 1)*npoin + conn[i,j,iel]
                     
-                    du[I1d]  += Vel[i,j,iel,ieq]
+                     du[I1d] += Vel[i,j,iel,ieq]
                 end
             end
         end
@@ -507,7 +507,7 @@ function newDSS_rhs!(SD::NSD_2D, du::AbstractArray, Vel::AbstractArray, conn::Ab
     #show(stdout, "text/plain", V)
 end
 
-function DSS_rhs!(SD::NSD_2D, V::SubArray{Float64}, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
+function or_DSS_rhs!(SD::NSD_2D, V::SubArray{Float64}, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
     
     for iel = 1:nelem
         for j = 1:N+1
@@ -527,7 +527,7 @@ function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Exact)
     RHS = M\RHS #M is not iagonal
 end
 
-function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
+function or_divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
 
     npoin = length(M)
     for i = 1:neqs
@@ -535,46 +535,18 @@ function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexac
             RHS[j, i] /= M[j]
         end
     end
-   #= 
-    for ieq=1:neqs
-       idx = (ieq-1)*npoin
     
-       RHS[idx+1:ieq*mesh.npoin] /= M[1:npoin]
-    
-        end
-    =#
 end
 
-function newdivive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
+function divive_by_mass_matrix!(RHS::AbstractArray, M::AbstractArray, QT::Inexact, neqs)
     
     npoin = length(M)
-    error("SAASSA")
-    
-    for i = 1:neqs
-        idx = (i-1)*mesh.npoin
 
-        I1d = (ieq - 1)*npoin + I
-        
-        for j = 1:lengthM
-            RHS[j, i] /= M[j]
-        end
+    for ieq=1:neqs
+        idx = (ieq - 1)*npoin
+        RHS[idx+1:ieq*npoin] .= RHS[idx+1:ieq*npoin]./M[1:npoin]
     end
-
-   #= for ieq = 1:neqs
-        for iel = 1:nelem
-            for j = 1:N+1
-                for i = 1:N+1
-
-                    for j = 1:length(M)
-
-                        I1d = (ieq - 1)*npoin + conn[i,j,iel]
-                    
-                        RHS[I1d] /= M[j]
-                end
-            end
-        end
-    end=#
-    #show(stdout, "text/plain", V)
+    
 end
 
 function matrix_wrapper(SD, QT, basis::St_Lagrange, ω, mesh, metrics, N, Q, TFloat; ldss_laplace=false, ldss_differentiation=false)
