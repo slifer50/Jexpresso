@@ -6,7 +6,7 @@ function user_inputs()
         :tend                 => 100.0,
         :Δt                   => 0.5,#8.75e-4,
         :ode_solver           => "Tsit5", #"Tsit5",
-        :ndiagnostics_outputs => 5,
+        :ndiagnostics_outputs => 2,
         :case                 => "rtb",
         :lsource              => true,
         #---------------------------------------------------------------------------

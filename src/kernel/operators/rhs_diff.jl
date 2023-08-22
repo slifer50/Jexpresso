@@ -62,16 +62,17 @@ function build_rhs_diff(SD::NSD_1D, QT::Inexact, PT::AdvDiff, qp::Array, nvars, 
     return rhsdiffξ_el*inputs[:νx]
 end
 
-function build_rhs_diff!(rhs_diff::SubArray{Float64}, rhsdiffξ_el::Array{Float64}, rhsdiffη_el::Array{Float64}, 
-                         SD::NSD_2D, QT, PT::AdvDiff, qq, qp, neqs, basis, ω, inputs, mesh::St_mesh, metrics::St_metrics, μ, T; qoutauxi=zeros(1,1))
+function build_rhs_diff!(rhsdiffξ_el::SubArray{Float64}, rhsdiffη_el::SubArray{Float64}, 
+                        QT, PT::AdvDiff, qq, qp, neqs, basis, ω, inputs, 
+                        mesh::St_mesh, metrics::St_metrics, μ, T, SD::NSD_2D; 
+                        qoutauxi=zeros(1,1))
     
     N = mesh.ngl - 1
     
     qnel = zeros(mesh.ngl,mesh.ngl,mesh.nelem)
-    #qq   = zeros(mesh.npoin, neqs)
     
     rhsdiffξ_el = Fill!(rhsdiffξ_el, zero(T))
-    rhsdiffη_el = Fill!(rhsdiffξ_el, zero(T))
+    rhsdiffη_el = Fill!(rhsdiffη_el, zero(T))
     
     #
     # qp[1:npoin]         <-- qq[1:npoin, "q1"]
@@ -79,11 +80,6 @@ function build_rhs_diff!(rhs_diff::SubArray{Float64}, rhsdiffξ_el::Array{Float6
     # qp[2npoin+1:Nnpoin] <-- qq[1:npoin, "qN"]
     #    
     myview1d2d!(qq, qp, neqs, mesh.npoin)
-    #for i=1:neqs
-    #    idx = (i-1)*mesh.npoin
-    #    qq[:,i] = qp[idx+1:i*mesh.npoin]
-    #end
-    
     #
     # Add diffusion ν∫∇ψ⋅∇q (ν = const for now)
     #
@@ -127,8 +123,7 @@ function build_rhs_diff!(rhs_diff::SubArray{Float64}, rhsdiffξ_el::Array{Float6
             end
         end
     end
-
-    rhs_diff .= @views (inputs[:νx]*rhsdiffξ_el[:,:,:,:] + inputs[:νy]*rhsdiffη_el[:,:,:,:])
+    #rhs_diff_el .= @views (inputs[:νx]*rhsdiffξ_el[:,:,:,:] + inputs[:νy]*rhsdiffη_el[:,:,:,:])
 end
 
 #

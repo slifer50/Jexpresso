@@ -21,15 +21,15 @@ function time_loop!(QT,
     println(" # Solving ODE ................................")
     @info " " inputs[:ode_solver] inputs[:tinit] inputs[:tend] inputs[:Δt]
 
-    u            = zeros(T, mesh.npoin*qp.neqs);    
+    u            = zeros(T, mesh.npoin*qp.neqs)
+    du_diff      = zeros(T, mesh.npoin*qp.neqs)
+    qq           = zeros(T, mesh.npoin, qp.neqs)
     F            = zeros(T, mesh.ngl, mesh.ngl, qp.neqs)
     G            = zeros(T, mesh.ngl, mesh.ngl, qp.neqs)
     S            = zeros(T, mesh.ngl, mesh.ngl, qp.neqs)
     rhs_el       = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, qp.neqs)
-    rhs_diff_el  = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, qp.neqs)
     rhs_diffξ_el = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, qp.neqs)
     rhs_diffη_el = zeros(T, mesh.ngl, mesh.ngl, mesh.nelem, qp.neqs)
-    qq           = zeros(T, mesh.npoin, qp.neqs)
     
     for i=1:qp.neqs
         idx = (i-1)*mesh.npoin
@@ -46,7 +46,8 @@ function time_loop!(QT,
     deps = zeros(1,1)
     tspan  = (inputs[:tinit], inputs[:tend])
     
-    params = (; T, F, G, S, rhs_el, rhs_diff_el, qq, SD=mesh.SD, QT, PT, neqs=qp.neqs, basis, ω, mesh, metrics, inputs, M, De, Le, Δt, deps, qp.qnm1, qp.qnm2, qp.μ)
+    params = (; T, F, G, S, du_diff, rhs_el, rhs_diffξ_el, rhs_diffη_el, qq, QT, PT, neqs=qp.neqs, 
+                basis, ω, mesh, metrics, inputs, M, De, Le, Δt, deps, qp.qnm1, qp.qnm2, qp.μ, SD=mesh.SD)
     
     prob = ODEProblem(rhs!,
                       u,
