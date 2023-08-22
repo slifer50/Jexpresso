@@ -490,21 +490,23 @@ function DSS_rhs(SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npo
 end
 
 
-function DSS_rhs!(du::AbstractArray, SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   
+function DSS_rhs!(du::AbstractArray, SD::NSD_2D, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)
 
     for ieq = 1:neqs
         for iel = 1:nelem
+            # Moving the multiplication out of the most nested loop
+            baseIndex = (ieq - 1) * npoin
+            
             for j = 1:N+1
                 for i = 1:N+1
-                    #I = conn[i,j,iel]
-                    I1d = (ieq - 1)*npoin + conn[i,j,iel]
-                    
-                     du[I1d] += Vel[i,j,iel,ieq]
+                    # Direct computation without temporary variable
+                    du[baseIndex + conn[i,j,iel]] += Vel[i,j,iel,ieq]
                 end
             end
         end
     end
     #show(stdout, "text/plain", V)
+    
 end
 
 function or_DSS_rhs!(SD::NSD_2D, V::SubArray{Float64}, Vel::AbstractArray, conn::AbstractArray, nelem, npoin, neqs, N, T)   

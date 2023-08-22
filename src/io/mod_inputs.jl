@@ -174,7 +174,7 @@ function mod_inputs_user_inputs!(equations, equations_case_name, equations_dir::
     
     #
     # DifferentialEquations.jl is used to solved the ODEs resulting from the method-of-lines
-    #
+    # See options in https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/#Low-Storage-Methods
     if(haskey(inputs, :ode_solver))
         if(uppercase(inputs[:ode_solver]) == "TSIT5")
             inputs[:ode_solver] = Tsit5() # Tsitouras 5/4 Runge-Kutta method. (free 4th order interpolant).
@@ -232,6 +232,9 @@ function mod_inputs_user_inputs!(equations, equations_case_name, equations_dir::
     end
     if(!haskey(inputs, :loutput_pert))
         inputs[:loutput_pert] = false
+    end
+    if(!haskey(inputs, :lwrite_output))
+        inputs[:lwrite_output] = true
     end
 
     #Grid entries:

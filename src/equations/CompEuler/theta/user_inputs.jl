@@ -3,10 +3,10 @@ function user_inputs()
         #---------------------------------------------------------------------------
         # User define your inputs below: the order doesn't matter
         #---------------------------------------------------------------------------
-        :tend                 => 100,
-        #:Δt                   => 0.1,#8.75e-4,
-        :ode_solver           => "Tsit5",
-        :ndiagnostics_outputs => 2,
+        :tend                 => 100.0,
+        :Δt                   => 0.5,#8.75e-4,
+        :ode_solver           => "Tsit5", #"Tsit5",
+        :ndiagnostics_outputs => 5,
         :case                 => "rtb",
         :lsource              => true,
         #---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ function user_inputs()
         #---------------------------------------------------------------------------
         # Physical parameters/constants:
         #---------------------------------------------------------------------------
-        :lvisc                => true, #false by default
+        #:lvisc                => true, #false by default
         #:visc_model           => "dsgs", #"none", "dsgs"
         :νx                   => 30.0, #kinematic viscosity constant
         :νy                   => 30.0, #kinematic viscosity constant
@@ -30,6 +30,7 @@ function user_inputs()
         #---------------------------------------------------------------------------
         # Plotting parameters
         #---------------------------------------------------------------------------
+        #:lwrite_output       => false, #true by default
         :outformat           => "vtk",
         :loutput_pert        => true,  #this is only implemented for VTK for now
         #---------------------------------------------------------------------------

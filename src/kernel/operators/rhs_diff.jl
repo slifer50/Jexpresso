@@ -62,25 +62,27 @@ function build_rhs_diff(SD::NSD_1D, QT::Inexact, PT::AdvDiff, qp::Array, nvars, 
     return rhsdiffξ_el*inputs[:νx]
 end
 
-function build_rhs_diff!(rhs_diff::SubArray{Float64}, SD::NSD_2D, QT, PT::AdvDiff, qp, neqs, basis, ω, inputs, mesh::St_mesh, metrics::St_metrics, μ, T; qoutauxi=zeros(1,1))
+function build_rhs_diff!(rhs_diff::SubArray{Float64}, rhsdiffξ_el::Array{Float64}, rhsdiffη_el::Array{Float64}, 
+                         SD::NSD_2D, QT, PT::AdvDiff, qq, qp, neqs, basis, ω, inputs, mesh::St_mesh, metrics::St_metrics, μ, T; qoutauxi=zeros(1,1))
     
     N = mesh.ngl - 1
     
     qnel = zeros(mesh.ngl,mesh.ngl,mesh.nelem)
-    qq   = zeros(mesh.npoin, neqs)
+    #qq   = zeros(mesh.npoin, neqs)
     
-    rhsdiffξ_el = zeros(mesh.ngl,mesh.ngl,mesh.nelem)
-    rhsdiffη_el = zeros(mesh.ngl,mesh.ngl,mesh.nelem)
-
+    rhsdiffξ_el = Fill!(rhsdiffξ_el, zero(T))
+    rhsdiffη_el = Fill!(rhsdiffξ_el, zero(T))
+    
     #
     # qp[1:npoin]         <-- qq[1:npoin, "q1"]
     # qp[npoin+1:2npoin]  <-- qq[1:npoin, "q2"]
     # qp[2npoin+1:Nnpoin] <-- qq[1:npoin, "qN"]
-    #
-    for i=1:neqs
-        idx = (i-1)*mesh.npoin
-        qq[:,i] = qp[idx+1:i*mesh.npoin]
-    end
+    #    
+    myview1d2d!(qq, qp, neqs, mesh.npoin)
+    #for i=1:neqs
+    #    idx = (i-1)*mesh.npoin
+    #    qq[:,i] = qp[idx+1:i*mesh.npoin]
+    #end
     
     #
     # Add diffusion ν∫∇ψ⋅∇q (ν = const for now)
@@ -117,7 +119,6 @@ function build_rhs_diff!(rhs_diff::SubArray{Float64}, SD::NSD_2D, QT, PT::AdvDif
                 ∇η∇q_kl = dηdx_kl*dqdx + dηdy_kl*dqdy
                 
                 for i = 1:mesh.ngl
-                    #hll,     hkk     =  basis.ψ[l,l],  basis.ψ[k,k]
                     dhdξ_ik, dhdη_il = basis.dψ[i,k], basis.dψ[i,l]
                     
                     rhsdiffξ_el[i,l,iel] -= ωJkl*dhdξ_ik*∇ξ∇q_kl
@@ -203,6 +204,15 @@ function build_rhs_diff(SD::NSD_1D, QT, PT::ShallowWater, qp, neqs, basis, ω, i
 
 end
 
+
+function myview1d2d!(q2d::Array{Float64}, q1d::Array{Float64}, neq, npoin)
+    
+    for i=1:neq
+        idx = (i-1)*npoin
+        q2d[:,i] = view(q1d, idx+1:i*npoin)
+    end
+end
+
 function build_rhs_diff(SD::NSD_2D, QT, PT::ShallowWater, qp, neqs, basis, ω, inputs,  mesh::St_mesh, metrics::St_metrics, T;)
     
     N = mesh.ngl - 1
@@ -218,10 +228,11 @@ function build_rhs_diff(SD::NSD_2D, QT, PT::ShallowWater, qp, neqs, basis, ω, i
     # qp[npoin+1:2npoin]  <-- qq[1:npoin, "u"]
     # qp[2npoin+1:3npoin] <-- qq[1:npoin, "v"]
     #
-    for i=1:neqs
-        idx = (i-1)*mesh.npoin
-        qq[:,i] = qp[idx+1:i*mesh.npoin]
-    end
+    myview1d2d!(qq, qp, neqs, mesh.npoin)
+    #for i=1:neqs
+    #    idx = (i-1)*mesh.npoin
+    #    qq[:,i] = qp[idx+1:i*mesh.npoin]
+    #end
     #
     # Add diffusion ν∫∇ψ⋅∇q (ν = const for now)
     #
