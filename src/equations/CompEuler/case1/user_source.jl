@@ -1,4 +1,4 @@
-function user_source(T, q::Array, npoin::Int64, x::Array)
+function user_source!(S::SubArray{Float64}, q::SubArray{Float64}, npoin::Int64; neqs=1)
 
     S = zeros(T, npoin)
     

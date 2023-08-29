@@ -1,5 +1,5 @@
-function user_flux!(F, T, SD::NSD_1D, q::Array, mesh::St_mesh; neqs=3)
-
+function user_flux!(F::SubArray{Float64}, SD::NSD_1D, q::SubArray{Float64}, mesh::St_mesh; neqs=3)
+    
     PhysConst = PhysicalConst{Float64}()
     
     ρ  = q[1]

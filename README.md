@@ -1,12 +1,14 @@
-# JEXPRESSO
+# JEXPRESSO 1D
+This is an old version that is NOT OPTIMIZED for performance and is only 1D.
+Use branch sm/efficientMemoryAccess for 2D optimized (fast).
+
 A research and educational software for the numerical solution of 1D, 2D, and 3D PDEs using spectral and spectral element methods on CPUs and GPUs. DISCLAIMER: this is WIP.
 
 If you are interested in contributing, please get in touch.
 
 # Some notes on using JEXPRESSO
 
-To install and run the code assume Julia
-version 1.7.2 or higher (tested up to 1.8.5)
+To install and run the code assume Julia 1.8.5
 
 ## Setup with CPUs
 
@@ -38,7 +40,6 @@ julia> include("./src/Jexpresso.jl")
 For ready to run tests, there are the currently available equations names:
 
 * AdvDiff
-* Elliptic
 * CompEuler (option with total energy and theta formulation)
 
 The code is designed to create any system of conservsation laws. See CompEuler/case1 to see an example of each file.

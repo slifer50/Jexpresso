@@ -7,7 +7,7 @@ function user_inputs()
         :Δt                   => 2.0e-4,#8.75e-4,
         :ode_solver           => "SSPRK54",
         :ndiagnostics_outputs => 2,
-        :case                 => "sod", 
+        :case                 => "sound", 
         #---------------------------------------------------------------------------
         #Integration and quadrature properties
         #---------------------------------------------------------------------------
