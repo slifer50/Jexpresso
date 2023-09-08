@@ -11,7 +11,6 @@ export St_cg
 export build_lgl!
 export LegendreGaussLobattoNodesAndWeights
 
-
 abstract type AbstractIntegrationPointAndWeights end
 abstract type AbstractInterpolationBasis end
 abstract type AbstractSpaceDimensions end
