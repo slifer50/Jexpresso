@@ -1,7 +1,3 @@
-include("../bases/basis_structs.jl")
-include("../../io/plotting/jeplots.jl")
-
-
 function DiscreteFourierCoefficients(f)
     """ DiscreteFourrierCoefficients(f)
             f:: array of length N
@@ -43,7 +39,7 @@ function AlmostEqual(a,b)
        determine if two floating point numbers a and b are nearly equal or not
     """
     #ϵ=eps(typeof(a))
-    ϵ = 0.00001
+    ϵ = 0.000001
     if (a == 0) || (b == 0) || (a <=ϵ) || (b <= ϵ) 
         if (abs(a-b) ≤ 2*ϵ)
             return true

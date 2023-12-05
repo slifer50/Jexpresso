@@ -1,221 +1,146 @@
-#Constants
-const TInt   = Int64
-const TFloat = Float64
-
-#--------------------------------------------------------
-# jexpresso modules
-#--------------------------------------------------------
-include("../../io/mod_inputs.jl")
-include("../mesh/metric_terms.jl")
-include("../mesh/mesh.jl")
-include("../operators/operators.jl")
-include("../abstractTypes.jl")
-include("../bases/basis_structs.jl")
-include("../infrastructure/element_matrices.jl")
-include("../infrastructure/Kopriva_functions.jl")
-include("../infrastructure/2D_3D_structures.jl")
 include("custom_bcs.jl")
 
-function apply_periodicity!(SD::NSD_1D, rhs, qp, mesh, inputs, QT, metrics, ψ, dψ, ω, t, nvars)
-    
-    if (haskey(inputs, :xmin_bc) && inputs[:xmin_bc]=="periodic" || haskey(inputs, :xmax_bc) && inputs[:xmax_bc]=="periodic")
-        #
-        # 1D periodic
-        #
-        qp[mesh.npoin_linear,:] .= 0.5*(qp[mesh.npoin_linear,:] .+ qp[1,:])
-        qp[1,:] .= qp[mesh.npoin_linear,:]
-        
-    elseif (haskey(inputs, :xmin_bc) && inputs[:xmin_bc]=="dirichlet" || haskey(inputs, :xmax_bc) && inputs[:xmax_bc]=="dirichlet")
-        #
-        # Dirichlet q(1,t) = q(mesh.npoin_linear,t) = 0.0
-        #
-        qp[1] = 0.0
-        qp[mesh.npoin_linear] = 0.0
+function apply_boundary_conditions!(u, uaux, t,qe,
+                                    mesh, metrics, basis,
+                                    RHS, rhs_el, ubdy,
+                                    ω, neqs, inputs, SD::NSD_1D)
+    if inputs[:lperiodic_1d]
+        nothing
     else
-        #
-        # 1D Default: periodic
-        #
-        qp[mesh.npoin_linear,:] .= 0.5*(qp[mesh.npoin_linear,:] .+ qp[1,:])
-        qp[1,:] .= qp[mesh.npoin_linear,:]        
+        build_custom_bcs!(SD, t, mesh, metrics, ω,
+                          ubdy, uaux, u, qe,
+                          @view(RHS[:,:]), @view(rhs_el[:,:,:,:]),
+                          neqs, dirichlet!, neumann, inputs)
     end
 end
 
-function apply_boundary_conditions!(SD::NSD_1D, rhs, qp, mesh,inputs, QT, metrics, ψ, dψ, ω, t, nvars;L=zeros(1,1))
-    #If Neumann conditions are needed compute gradient
-    calc_grad = false
-    #   for key in keys(inputs)
-    #     if (inputs[key] == "dirichlet" || inputs[key] == "neumann" || inputs[key] == "dirichlet/neumann")
-    calc_grad = true
-    #    end
-    #  end
-    gradq = zeros(mesh.npoin,nvars)
-    #TODO remake build custom_bcs for new boundary data
-    #if (calc_grad)
-    #    gradq = build_gradient(SD, QT::Inexact, qp, ψ, dψ, ω, mesh, metrics,gradq,nvars)
-        build_custom_bcs!(t,mesh,qp,gradq,rhs,SD,nvars,metrics,ω,dirichlet!,neumann,L,inputs)
-    #end
-end
+function apply_boundary_conditions!(u, uaux, t,qe,
+                                    mesh, metrics, basis,
+                                    RHS, rhs_el, ubdy,
+                                    ω, neqs, inputs, SD::NSD_2D)
 
-function apply_boundary_conditions!(SD::NSD_2D, rhs, qp, mesh, inputs, QT, metrics, ψ, dψ, ω, t, nvars;L=zeros(1,1))
-    #If Neumann conditions are needed compute gradient
-    calc_grad = false
-    #   for key in keys(inputs)
-    #     if (inputs[key] == "dirichlet" || inputs[key] == "neumann" || inputs[key] == "dirichlet/neumann")
-    calc_grad = true
-    #    end
-    #  end
-    nface = size(mesh.bdy_edge_comp,1)
-    dqdx_st = zeros(nvars,2)
-    q_st = zeros(nvars,1)
-    gradq = zeros(2,mesh.npoin,nvars)
-    flux_q = zeros(mesh.ngl,nface,2,nvars)
-    exact = zeros(mesh.ngl,nface,nvars)
-    penalty =0.0#50000
-    nx = metrics.nx
-    ny = metrics.ny
-    #TODO remake build custom_bcs for new boundary data
-    #if (calc_grad)
-    #    gradq = build_gradient(SD, QT::Inexact, qp, ψ, dψ, ω, mesh, metrics,gradq,nvars)
-        build_custom_bcs!(t,mesh,qp,gradq,rhs,SD,nvars,metrics,ω,dirichlet!,neumann,L,inputs)
-    #end
-   
-end
-#=
-
-function build_custom_bcs!(t,mesh,q,gradq,rhs,::NSD_2D,nvars,metrics,ω,dirichlet!,neumann,L,inputs)
-
-    #error("QUI LinearCLaw/user_bc.jl")
-
-    c  = 1.0
-    x0 = y0 = -0.8
-    kx = ky = sqrt(2.0)/2
-    ω  = 0.2
-    d  = 0.5*ω/sqrt(log(2.0)); d2 = d*d
-    @inline f(x,y,t) = exp(- ((kx*(x - x0) + ky*(y - y0)-c*t)^2)/d2)
+    build_custom_bcs!(SD, t, mesh, metrics, ω,
+                      ubdy, uaux, u, qe,
+                      @view(RHS[:,:]), @view(rhs_el[:,:,:,:]),
+                      neqs, dirichlet!, neumann, inputs)
     
-    #idx = (ieq-1)*mesh.npoin
-    #q[idx+1:ieq*mesh.npoin]
-    for ieq = 1:nvars
-        for iedge = 1:size(mesh.bdy_edge_comp,1)
-            iel = mesh.bdy_edge_in_elem[iedge]
-            comp = mesh.bdy_edge_comp[iedge]
-            for k=1:mesh.ngl
-                if (mesh.bdy_edge_type[iedge] != "periodic1" && mesh.bdy_edge_type[iedge] !="periodic2")
-                    tag = mesh.bdy_edge_type[iedge]
-                    ip = mesh.poin_in_bdy_edge[iedge,k]
-                    idx = (ieq - 1)*mesh.npoin + ip
-                    
-                    m=1
-                    l=1
-                    for ii=1:mesh.ngl
-                        for jj=1:mesh.ngl
-                            if (mesh.connijk[ii,jj,iel] == ip)
-                                mm=jj
-                                ll=ii
-                            end
-                        end
-                    end
-                    x = mesh.x[ip]
-                    y = mesh.y[ip]
-                    #if (inputs[:luser_bc])
-
-                    e = f(x,y,t) #exp(- ((kx*(x - x0) + ky*(y - y0)-c*t)^2)/d2)
-                    q_bdyvalue = [e, kx*e/c, ky*e/c]                    
-                    q[idx] = q_bdyvalue[ieq]
-                    
-                    #q[ip,:] = dirichlet!(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                    #flux = zeros(size(q,2),1)
-                    #flux = (ω[k]*metrics.Jef[k,iedge]).*neumann(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                    #END SM test
-                    
-                    #q[ip,:] = dirichlet!(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                    #flux = (ω[k]*metrics.Jef[k,iedge]).*neumann(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                    #else
-                    #    q[ip,:] .= 0.0
-                    #    flux = zeros(size(q,2),1)
-                    #end
-                    #rhs[l,m,iel,:] .= rhs[l,m,iel,:] #.+ flux[:]
-                  #  if (size(L,1)>1)
-                  #      for ii=1:mesh.npoin
-                  #          L[ip,ii] = 0.0
-                  #      end
-                  #      L[ip,ip] =1.0
-                  #  end
-                end
-            end
-        end
-    end
 end
-=#
 
-function build_custom_bcs!(t,mesh,q,gradq,rhs,::NSD_1D,nvars,metrics,ω,dirichlet!,neumann,L,inputs)
+function apply_periodicity!(u, uaux, t,qe,
+                            mesh, metrics, basis,
+                            RHS, rhs_el, ubdy,
+                            ω, neqs, inputs, SD::NSD_1D)
+    nothing
+end
 
-    for ip in [1, mesh.npoin_linear]
-        x = mesh.x[ip]
-        if (ip == 1)
-            k=1
-            iel = 1
-        else
-            k=mesh.ngl
-            iel = mesh.nelem
-        end
-        if (inputs[:luser_bc])
-             q[ip,:] = dirichlet!(q[ip,:],gradq[ip,:],x,t,mesh,metrics)
-             flux = (ω[k]*neumann(q[ip,:],gradq[ip,:],x,t,mesh,metrics))
-        else
-             q[ip,:] .= 0.0
-             flux = zeros(size(q,2),1)
-        end
+function apply_periodicity!(u, uaux, t,qe,
+                            mesh, metrics, basis,
+                            RHS, rhs_el, ubdy,
+                            ω, neqs, inputs, SD::NSD_2D)
+    nothing
+end
+
+
+function _bc_dirichlet!(qbdy, x, y, t, tag, mesh)
+
+    # WARNING!!!!
+    # THIS SHOULD LEVERAGE the bdy node tag rather than checking coordinates
+    # REWRITE and make sure that there is no allocation.
+    #############
+    eps = 10.0
+    xmin = mesh.xmin + eps; xmax = mesh.xmax - eps
+    ymin = mesh.ymin + eps; ymax = mesh.ymax - eps
+    
+    #=if ( x <= -4990.0 || x >= 4990.0)
+        qbdy[2] = 0.0
+    end
+    if (y <= 10.0 || y >= 9990.0)
+        qbdy[3] = 0.0
+    end
+    if ((x >= 4990.0 || x <= -4990.0) && (y >= 9990.0 || y <= 10.0))
+        qbdy[2] = 0.0
+        qbdy[3] = 0.0
+    end=#
+    if ( x <= xmin || x >= xmax)
+        qbdy[2] = 0.0
+    end
+    if (y <= ymin || y >= ymax)
+        qbdy[3] = 0.0
+    end
+    if ((x >= xmax || x <= xmin) && (y >= ymax || y <= ymin))
+        qbdy[2] = 0.0
+        qbdy[3] = 0.0
+    end
+    
+end
+
+function build_custom_bcs!(::NSD_1D, t, mesh, metrics, ω,
+                           qbdy, uaux, u, qe,
+                           RHS, rhs_el,
+                           neqs, dirichlet!, neumann, inputs)
+   ip = 1
+   fill!(qbdy, 4325789.0)
+   user_bc_dirichlet!(@view(uaux[ip,:]), mesh.x[ip], t, "left", qbdy, @view(qe[ip,:]),inputs[:SOL_VARS_TYPE])
+   for ieq =1:neqs
+      if !AlmostEqual(qbdy[ieq],uaux[ip,ieq]) && !AlmostEqual(qbdy[ieq],4325789.0) # WHAT's this for?
+         uaux[ip,ieq] = qbdy[ieq]
+         RHS[ip, ieq] = 0.0
+      end
+    end
+    
+    ip=mesh.npoin_linear
+    fill!(qbdy, 4325789.0)
+    user_bc_dirichlet!(@view(uaux[ip,:]), mesh.x[ip], t, "right", qbdy, @view(qe[ip,:]),inputs[:SOL_VARS_TYPE])
+    for ieq =1:neqs
+      if !AlmostEqual(qbdy[ieq],uaux[ip,ieq]) && !AlmostEqual(qbdy[ieq],4325789.0) # WHAT's this for?
+         uaux[ip,ieq] = qbdy[ieq]
+         RHS[ip, ieq] = 0.0
+      end
+    end
+
+    #Map back to u after applying b.c.
+    uaux2u!(u, uaux, neqs, mesh.npoin)
+
+end
+
+function build_custom_bcs!(::NSD_2D, t, mesh, metrics, ω,
+                           qbdy, uaux, u, qe,
+                           RHS, rhs_el,
+                           neqs, dirichlet!, neumann, inputs)
+    #
+    # WARNING: Notice that the b.c. are applied to uaux[:,:] and NOT u[:]!
+    #          That
+    for iedge = 1:mesh.nedges_bdy 
+        iel  = mesh.bdy_edge_in_elem[iedge]
         
-        rhs[k,iel,:] .= rhs[k,iel,:] .+ flux[:]
-        if (size(L,1)>1)
-            for ii=1:mesh.npoin
-                L[ip,ii] = 0.0
-            end
-            L[ip,ip] =1.0
-        end
-    end
-end
-
-function build_custom_bcs!(t,mesh,q,gradq,rhs,::NSD_2D,nvars,metrics,ω,dirichlet!,neumann,L,inputs)
-
-    
-    for iedge = 1:size(mesh.bdy_edge_comp,1)
-        iel = mesh.bdy_edge_in_elem[iedge]
-        comp = mesh.bdy_edge_comp[iedge]
-        for k=1:mesh.ngl
-            if (mesh.bdy_edge_type[iedge] != "periodic1" && mesh.bdy_edge_type[iedge] !="periodic2")
-                tag = mesh.bdy_edge_type[iedge]
+        if mesh.bdy_edge_type[iedge] != "periodic1" && mesh.bdy_edge_type[iedge] != "periodic2" && mesh.bdy_edge_type != "Laguerre"
+        #if mesh.bdy_edge_type[iedge] == "free_slip"
+            
+            #tag = mesh.bdy_edge_type[iedge]
+            for k=1:mesh.ngl
                 ip = mesh.poin_in_bdy_edge[iedge,k]
-                m=1
-                l=1
-                for ii=1:mesh.ngl
-                    for jj=1:mesh.ngl
-                        if (mesh.connijk[ii,jj,iel] == ip)
-                            mm=jj
-                            ll=ii
-                        end
+                nx = metrics.nx[iedge,k]
+                ny = metrics.ny[iedge,k]
+                fill!(qbdy, 4325789.0)
+                #qbdy[:] .= uaux[ip,:]
+                #ipp = 1 #ip               
+                ###_bc_dirichlet!(qbdy, mesh.x[ip], mesh.y[ip], t, mesh.bdy_edge_type[iedge])
+
+                #dirichlet!(@view(uaux[ip,:]),qbdy, mesh.x[ip], mesh.y[ip], t, metrics.nx[iedge,k], metrics.ny[iedge,k], mesh.bdy_edge_type[iedge], @view(qe[ip,:]), inputs[:SOL_VARS_TYPE]) ###AS IT IS NOW, THIS IS ALLOCATING SHIT TONS. REWRITE to make it with ZERO allocation. hint: It may be due to passing the function but possibly not.
+                user_bc_dirichlet!(@view(uaux[ip,:]), mesh.x[ip], mesh.y[ip], t, mesh.bdy_edge_type[iedge], qbdy, nx, ny, @view(qe[ip,:]),inputs[:SOL_VARS_TYPE])
+                
+                for ieq =1:neqs
+                    if !AlmostEqual(qbdy[ieq],uaux[ip,ieq]) && !AlmostEqual(qbdy[ieq],4325789.0) # WHAT's this for?
+                        #@info mesh.x[ip],mesh.y[ip],ieq,qbdy[ieq] 
+                        uaux[ip,ieq] = qbdy[ieq]
+                        RHS[ip, ieq] = 0.0
                     end
-                end
-                x = mesh.x[ip]
-                y = mesh.y[ip]
-                if (inputs[:luser_bc])
-                     q[ip,:] = dirichlet!(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                    flux = (ω[k]*metrics.Jef[k,iedge]).*neumann(q[ip,:],gradq[:,ip,:],x,y,t,mesh,metrics,tag)
-                else
-                    q[ip,:] .= 0.0
-                    flux = zeros(size(q,2),1)
-                end
-                rhs[l,m,iel,:] .= rhs[l,m,iel,:] .+ flux[:]
-                if (size(L,1)>1)
-                    for ii=1:mesh.npoin
-                        L[ip,ii] = 0.0
-                    end
-                    L[ip,ip] =1.0
                 end
             end
         end
     end
+    
+    #Map back to u after applying b.c.
+    uaux2u!(u, uaux, neqs, mesh.npoin)
+       
 end
-
-

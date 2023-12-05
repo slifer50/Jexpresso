@@ -1,86 +1,102 @@
+using ArgParse
+#using Profile
+#using PProf
+
 #--------------------------------------------------------
 # The problem name is a command line argument:
 #
 # 1. Launch Julia:
 # >> julia --project=.
 #
-# 2. Push problem name to ARGS
-#    You need this only when you run a new problem
+# 2. Push equations name to ARGS
+#    You need this only when you run a new equations
 #
-#    julia > push!(empty!(ARGS), PROBLEM_NAME::String);
-#    julia > include(./src/run.jl)
+#    julia > push!(empty!(ARGS), EQUATIONS::String, EQUATIONS_CASE_NAME::String);
+#    julia > include(./src/Jexpresso.jl)
 #
-# PROBLEM_NAME is the name of your problem directory
-# as $JEXPRESSO/src/problems/problem_name
+#    EQUATIONS is the name of your equations directory as $JEXPRESSO/src/equations/EQUATIONS
+#    EQUATIONS_CASE_NAME is the name of the subdirectory $JEXPRESSO/src/equations/EQUATIONS_CASE_NAME
 #
-# Ex. If you run the Advection Diffusion problem in $JEXPRESSO/src/problems/AdvDiff
+# Ex. To run the Compressible Euler equations in $JEXPRESSO/src/equations/CompEuler/theta
 # 
-#  julia > push!(empty!(ARGS), "AdvDiff");
-#  julia > include(./src/run.jl)
+#  julia > push!(empty!(ARGS), "CompEuler", "theta");
+#  julia > include(./src/Jexpresso.jl)
 #
 #--------------------------------------------------------
-if isempty(ARGS)
-    s = """
-            
-            Please, run the following every time that PROBLEM_NAME changes:
-                julia> push!(empty!(ARGS), PROBLEM_NAME::String, , PROBLEM_CASE_NAME::String);
+function parse_commandline()
+    s = ArgParseSettings()
 
-            and only then run jexpresso with:
-                julia> include(./src/run.jl)
+    @add_arg_table s begin
+        "eqs"
+        help = "equations"
+        default = "CompEuler"
+        required = false
+        
+        "eqs_case"
+        help = "case name in equations directory"
+        default = "theta"
+        required = false
+        
+    end
 
-            Currently avaiable PROBLEM_NAME options:
-            - Elliptic
-            - AdvDiff
-
-            PROBLEM_CASE_NAME is user defined and must be the name of the case directory inside PROBLEM_NAME:
-                For example, if "AdvDiff" contains a directory called "Case1", you would do the following:
-                    julia> push!(empty!(ARGS), "AdvDiff", "Case1");
-                but if you don't have any CASE DIRECTORY inside "AdvDiff", then you simply 
-                    julia> push!(empty!(ARGS), "AdvDiff");
-        """
-    error(s)
+    return parse_args(s)
 end
 
-include("./io/mod_inputs.jl")
-parsed_args  = parse_commandline()
-problem_name = string(parsed_args["arg1"])
-if (parsed_args["arg2"] === nothing)
-    problem_case_name = ""
-else
-    problem_case_name = string(parsed_args["arg2"])
-end
-problem_dir  = string("problems")
-driver_dir   = string("./", problem_dir, "/", problem_name, "/", problem_case_name, "/drivers.jl")
-include(driver_dir)
+#--------------------------------------------------------
+#Parse command line args:
+#--------------------------------------------------------
+parsed_args                = parse_commandline()
+parsed_equations           = string(parsed_args["eqs"])
+parsed_equations_case_name = string(parsed_args["eqs_case"])
+
+driver_file          = string(dirname(@__DIR__()), "/problems/equations/drivers.jl")
+case_name_dir        = string(dirname(@__DIR__()), "/problems/equations", "/", parsed_equations, "/", parsed_equations_case_name)
+user_input_file      = string(case_name_dir, "/user_inputs.jl")
+user_flux_file       = string(case_name_dir, "/user_flux.jl")
+user_source_file     = string(case_name_dir, "/user_source.jl")
+user_bc_file         = string(case_name_dir, "/user_bc.jl")
+user_initialize_file = string(case_name_dir, "/initialize.jl")
+
+include(driver_file)
+
+include(user_input_file)
+include(user_flux_file)
+include(user_source_file)
+include(user_bc_file)
+include(user_initialize_file)
 
 #--------------------------------------------------------
 #Read User Inputs:
 #--------------------------------------------------------
 mod_inputs_print_welcome()
-inputs        = Dict{}()
-inputs        = mod_inputs_user_inputs!(problem_name, problem_case_name, problem_dir)
+inputs = Dict{}()
+
+inputs = mod_inputs_user_inputs!(user_input_file)
 
 #--------------------------------------------------------
 #Create output directory if it doesn't exist:
 #--------------------------------------------------------
 user_defined_output_dir = inputs[:output_dir]
-if isempty(user_defined_output_dir)
-    OUTPUT_DIR = string(dirname(@__DIR__()), "/src/", problem_dir, "/", problem_name, "/", problem_case_name, "/output-",  Dates.format(now(), "dduyyyy-HHMMSS/"))
+if user_defined_output_dir == "none"
+    OUTPUT_DIR = string(case_name_dir, "/output-",  Dates.format(now(), "dduyyyy-HHMMSS/"))
+    inputs[:output_dir] = OUTPUT_DIR
 else
-    @info user_defined_output_dir
-    OUTPUT_DIR = string(dirname(user_defined_output_dir), "/", problem_name, "/", problem_case_name, "/output-",  Dates.format(now(), "dduyyyy-HHMMSS/"))
+    OUTPUT_DIR = string(user_defined_output_dir, "/", parsed_equations, "/", parsed_equations_case_name, "/output-",  Dates.format(now(), "dduyyyy-HHMMSS/"))
 end
 if !isdir(OUTPUT_DIR)
     mkpath(OUTPUT_DIR)
 end
 
 #--------------------------------------------------------
-# Problem setup
-# !!!!!!
-# !!!!!! WARNING: MOVE all the setup parameters to user_input.jl
-# !!!!!!
+#Save a copy of user_inputs.jl for the case being run 
 #--------------------------------------------------------
+run(`$cp $user_input_file $OUTPUT_DIR`) 
+
+
 driver(ContGal(),   # Space discretization type    
        inputs, # input parameters from src/user_input.jl
        OUTPUT_DIR,
        TFloat)
+
+# Export pprof profile and open interactive profiling web interface.
+#pprof()
