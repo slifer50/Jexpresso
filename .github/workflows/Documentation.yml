@@ -1,9 +1,10 @@
 name: Documentation
-name: Documentation
-on: push
+on:
+  push:
     branches:
       - sm/3d
     tags: '*'
+  pull_request:
 jobs:
   build:
     runs-on: ubuntu-latest
