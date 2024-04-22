@@ -1,5 +1,6 @@
 name: Documentation
-on: [push, pull_request]
+name: Documentation
+on: push
     branches:
       - sm/3d
     tags: '*'
