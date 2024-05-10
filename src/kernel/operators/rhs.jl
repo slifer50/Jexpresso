@@ -364,10 +364,10 @@ function rhs!(du, u, params, time)
                 @inbounds params.rhs.RHS .+= params.rhs.RHS_lag
 
                 if (params.inputs[:lvisc])
-                    params.rhs.RHS_visc_lag .= TFloat(0.0)
+                    params.rhs.RHS_visc_lag     .= TFloat(0.0)
                     params.rhs.rhs_diffξ_el_lag .= TFloat(0.0)
                     params.rhs.rhs_diffη_el_lag .= TFloat(0.0)
-                    params.source_lag_gpu .= TFloat(0.0)
+                    params.source_lag_gpu       .= TFloat(0.0)
 
                     k_diff_lag = _build_rhs_visc_lag_gpu_2D_v0!(backend, (Int64(params.mesh.ngl),Int64(params.mesh.ngr)))
                     k_diff_lag(params.rhs.RHS_visc_lag, params.rhs.rhs_diffξ_el_lag, params.rhs.rhs_diffη_el_lag, params.uaux, params.qp.qe, params.source_lag_gpu, params.mesh.x,
@@ -383,10 +383,10 @@ function rhs!(du, u, params, time)
             end
 
             if (params.inputs[:lvisc])
-                params.rhs.RHS_visc .= TFloat(0.0)
+                params.rhs.RHS_visc     .= TFloat(0.0)
                 params.rhs.rhs_diffξ_el .= TFloat(0.0)
                 params.rhs.rhs_diffη_el .= TFloat(0.0)
-                params.source_gpu .= TFloat(0.0)
+                params.source_gpu       .= TFloat(0.0)
                 
                 k = _build_rhs_diff_gpu_2D_v0!(backend, (Int64(params.mesh.ngl),Int64(params.mesh.ngl)))
                 k(params.rhs.RHS_visc, params.rhs.rhs_diffξ_el, params.rhs.rhs_diffη_el, params.uaux, params.qp.qe, params.source_gpu, params.mesh.x, params.mesh.y, params.mesh.connijk, 
@@ -431,6 +431,7 @@ function _build_rhs!(RHS, u, params, time)
     end
     
     u2uaux!(@view(params.uaux[:,:]), u, params.neqs, params.mesh.npoin)
+    
     apply_boundary_conditions!(u, params.uaux, time, params.qp.qe,
                                params.mesh.x, params.mesh.y, params.mesh.z,
                                params.metrics.nx, params.metrics.ny, params.metrics.nz,
@@ -479,31 +480,39 @@ function _build_rhs!(RHS, u, params, time)
     
 end
 
-function inviscid_rhs_el!(u, params, connijk, x, y, lsource, SD::NSD_1D)
-    
+function inviscid_rhs_el!(u, uprimitive, params,
+                          connijk,
+                          F, G, H, S,
+                          qe,
+                          x, y,
+                          lsource, SD::NSD_1D;
+                          xmin=0, xmax=1,
+                          ymin=0, ymax=0,
+                          zmin=0, zmax=0)
+        
     u2uaux!(@view(params.uaux[:,:]), u, params.neqs, params.mesh.npoin)
-    xmax = params.xmax
-    xmin = params.xmin
-    ymax = params.ymax    
-
+    
     for iel=1:params.mesh.nelem
         for i=1:params.mesh.ngl
             ip = connijk[iel,i,1]
             
-            user_flux!(@view(params.F[i,:]), @view(params.G[i,:]), SD,
+            user_flux!(@view(F[i,:]), @view(G[i,:]), SD,
                        @view(params.uaux[ip,:]),
-                       @view(params.qp.qe[ip,:]),         #pref
+                       @view(qe[ip,:]),         #pref
                        params.mesh,
                        params.CL, params.SOL_VARS_TYPE;
                        neqs=params.neqs, ip=ip)
             
             if lsource
-                user_source!(@view(params.S[i,:]),
+                user_source!(@view(S[i,:]),
                              @view(params.uaux[ip,:]),
-                             @view(params.qp.qe[ip,:]),          #ρref 
-                             params.mesh.npoin, params.CL, params.SOL_VARS_TYPE;
-                             neqs=params.neqs, x=x[ip],y=y[ip],
-                             xmax=xmax,xmin=xmin,ymax=ymax)
+                             @view(qe[ip,:]),          #ρref 
+                             params.mesh.npoin,
+                             params.CL,
+                             params.SOL_VARS_TYPE;
+                             neqs=params.neqs,
+                             x=x[ip], y=y[ip],
+                             xmin=xmin, xmax=xmax)
             end
         end
         
@@ -616,10 +625,28 @@ function viscous_rhs_el!(u, params, SD::NSD_2D)
     
     for iel=1:params.mesh.nelem
         
-        uToPrimitives!(params.neqs, params.fluxes.uprimitive, u, params.qp.qe, params.mesh.connijk, params.mesh.ngl, params.mesh.npoin, params.inputs[:δtotal_energy], iel, params.PT, params.CL, params.SOL_VARS_TYPE, SD)
+     @time   uToPrimitives!(params.neqs,
+                       params.fluxes.uprimitive, u,
+                       params.qp.qe,
+                       params.mesh.connijk,
+                       params.mesh.ngl, params.mesh.npoin,
+                       params.inputs[:δtotal_energy],
+                       iel,
+                       params.PT, params.CL, params.SOL_VARS_TYPE, SD)
 
         for ieq in params.ivisc_equations
-            _expansion_visc!(params.rhs.rhs_diffξ_el, params.rhs.rhs_diffη_el, params.fluxes.uprimitive, params.visc_coeff, params.ω, params.mesh.ngl, params.basis.dψ, params.metrics.Je, params.metrics.dξdx, params.metrics.dξdy, params.metrics.dηdx, params.metrics.dηdy, params.inputs, iel, ieq, params.QT, SD, params.AD)
+            _expansion_visc!(params.rhs.rhs_diffξ_el,
+                             params.rhs.rhs_diffη_el,
+                             params.fluxes.uprimitive,
+                             params.visc_coeff,
+                             params.ω,
+                             params.mesh.ngl,
+                             params.basis.dψ,
+                             params.metrics.Je,
+                             params.metrics.dξdx, params.metrics.dξdy,
+                             params.metrics.dηdx, params.metrics.dηdy,
+                             params.inputs, iel, ieq,
+                             params.QT, SD, params.AD)
         end
         
     end
@@ -675,7 +702,11 @@ end
 
 function _expansion_inviscid!(u, params, iel, ::CL, QT::Inexact, SD::NSD_2D, AD::FD) nothing end
 
-function _expansion_inviscid!(u, uprimitive, neqs, ngl, dψ, ω, F, G, S, Je, dξdx, dξdy, dηdx, dηdy, rhs_el, iel, ::CL, QT::Inexact, SD::NSD_2D, AD::ContGal)
+function _expansion_inviscid!(u, uprimitive, neqs, ngl, dψ, ω,
+                              F, G, S,
+                              Je, dξdx, dξdy, dηdx, dηdy,
+                              rhs_el, iel,
+                              ::CL, QT::Inexact, SD::NSD_2D, AD::ContGal)
     
     for ieq=1:neqs
         for j=1:ngl

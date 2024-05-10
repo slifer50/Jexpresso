@@ -18,7 +18,7 @@ function mod_inputs_user_inputs!(inputs)
     mod_inputs_check(inputs, :nop, Int8(4), "w")  #Polynomial order
     
     if(!haskey(inputs, :backend))
-      inputs[:backend] = CPU()
+        inputs[:backend] = CPU()
     end
    
     if(inputs[:backend] == MetalBackend() || inputs[:backend] == CUDABackend())

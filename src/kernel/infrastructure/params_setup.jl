@@ -15,7 +15,8 @@ function params_setup(sem,
     # Initialize:
     # u     -> solution array
     # uaux  -> solution auxiliary array (Eventually to be removed)
-    # F,G   -> physical flux arrays
+    # vaux  -> solution auxiliary array (Eventually to be removed)
+    # F,G,H -> physical flux arrays
     # S     -> source array
     # rhs* -> inviscid and viscous ELEMENT rhs
     # RHS* -> inviscid and viscous GLOBAL  rhs
@@ -23,71 +24,70 @@ function params_setup(sem,
     u    = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin)*Int64(qp.neqs))
     uaux = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin), Int64(qp.neqs))
     vaux = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin)) #generic auxiliary array for general use
-
-    uaux_el      = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #rhs_el       = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #rhs_diff_el  = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #rhs_diffξ_el = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #rhs_diffη_el = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #rhs_diffζ_el = KernelAbstractions.zeros(backend, T, 0)
-    #F            = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #G            = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #H            = KernelAbstractions.zeros(backend, T, 0)
-    #S            = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    #uprimitive   = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs)+1)
-
-    # WHY FLUX_GPU/SOURCE_GPU as separate from F,G,H, S?
-    flux_gpu   = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem),Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), 2*qp.neqs)
-    source_gpu = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem),Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), qp.neqs)
-    qbdy_gpu   = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nedges_bdy), Int64(sem.mesh.ngl), qp.neqs)
     
-    rhs      = allocate_rhs(sem.mesh.SD, sem.mesh.nelem, sem.mesh.npoin, sem.mesh.ngl, T, backend; neqs=qp.neqs)
-    fluxes   = allocate_fluxes(sem.mesh.SD, sem.mesh.npoin, sem.mesh.ngl, T, backend; neqs=qp.neqs)
-
-    #RHS      = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin), Int64(qp.neqs))
-    #RHS_visc = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin), Int64(qp.neqs))
+    rhs        = allocate_rhs(sem.mesh.SD, sem.mesh.nelem, sem.mesh.npoin, sem.mesh.ngl, T, backend; neqs=qp.neqs)
+    fluxes     = allocate_fluxes(sem.mesh.SD, sem.mesh.npoin, sem.mesh.ngl, T, backend; neqs=qp.neqs)
+    gpuAux     = allocate_gpuAux(sem.mesh.SD, sem.mesh.nelem, sem.mesh.nedges_bdy, sem.mesh.ngl, T, backend; neqs=qp.neqs)
+    flux_gpu   = gpuAux.flux_gpu
+    source_gpu = gpuAux.source_gpu
+    qbdy_gpu   = gpuAux.qbdy_gpu
+   
     
-    RHS          = rhs.RHS
-    RHS_visc     = rhs.RHS_visc
-    rhs_el       = rhs.rhs_el
-    rhs_diff_el  = rhs.rhs_diff_el
-    rhs_diffξ_el = rhs.rhs_diffξ_el
-    rhs_diffη_el = rhs.rhs_diffη_el
-    rhs_diffζ_el = rhs.rhs_diffζ_el
-    
-    F = fluxes.F
-    G = fluxes.G
-    H = fluxes.H
-    S = fluxes.S
-    uprimitive = fluxes.uprimitive
-    
-    #The following are currently used by B.C.
+    #    
+    # The following are currently used by B.C.
+    #
     gradu    = KernelAbstractions.zeros(backend, T, 2, 1, 1) #KernelAbstractions.zeros(2,Int64(sem.mesh.npoin),nvars)
     ubdy     = KernelAbstractions.zeros(backend, T, Int64(qp.neqs))
     bdy_flux = KernelAbstractions.zeros(backend, T, Int64(qp.neqs),1)    
-   
-    #filter arrays
-    q_t      = KernelAbstractions.zeros(backend, T,Int64(qp.neqs),Int64(sem.mesh.ngl),Int64(sem.mesh.ngl))
-    q_ti     = KernelAbstractions.zeros(backend, T,Int64(sem.mesh.ngl),Int64(sem.mesh.ngl))
-    fy_t     = transpose(sem.fy)
-    fy_t_lag = transpose(sem.fy_lag)
-    fqf      = KernelAbstractions.zeros(backend, T,Int64(qp.neqs),Int64(sem.mesh.ngl),Int64(sem.mesh.ngl))
-    b        = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem), Int64(sem.mesh.ngl), Int64(sem.mesh.ngl), Int64(qp.neqs))
-    B        = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin), Int64(qp.neqs)) 
-    #store grid limits to save time
-    xmax = maximum(sem.mesh.x)
-    xmin = minimum(sem.mesh.x)
-    ymax = maximum(sem.mesh.y)
-    ymin = minimum(sem.mesh.y)
+    
+    xmax = maximum(sem.mesh.x); xmin = minimum(sem.mesh.x)
+    ymax = maximum(sem.mesh.y); ymin = minimum(sem.mesh.y)
+    
+    #
+    # filter arrays
+    #
+    filter = allocate_filter(sem.mesh.SD, sem.mesh.nelem, sem.mesh.npoin, sem.mesh.ngl, T, backend; neqs=qp.neqs, lfilter=inputs[:lfilter])
+    fy_t   = transpose(sem.fy)
+    
+    if ( "Laguerre" in sem.mesh.bdy_edge_type ||
+        inputs[:llaguerre_1d_right] == true   ||
+        inputs[:llaguerre_1d_left]  == true )
+        
+        rhs_lag = allocate_rhs_lag(sem.mesh.SD,
+                                   sem.mesh.nelem_semi_inf,
+                                   sem.mesh.npoin,
+                                   sem.mesh.ngl,
+                                   sem.mesh.ngr,
+                                   T,
+                                   backend;
+                                   neqs = qp.neqs)
 
+        fluxes_lag = allocate_fluxes_lag(sem.mesh.SD,
+                                         sem.mesh.ngl,
+                                         sem.mesh.ngr,
+                                         T,
+                                         backend;
+                                         neqs = qp.neqs)
+
+        filter_lag =  allocate_filter_lag(sem.mesh.SD,
+                                          sem.mesh.nelem_semi_inf,
+                                          sem.mesh.npoin,
+                                          sem.mesh.ngl,
+                                          sem.mesh.ngr,
+                                          T,
+                                          backend;
+                                          neqs = qp.neqs,
+                                          lfilter = inputs[:lfilter])
+        fy_t_lag = transpose(sem.fy_lag)
+    end
+    
     
     #The following are only built and active if Laguerre boundaries are to be used
-    if ( "Laguerre" in sem.mesh.bdy_edge_type)
+    #=if ( "Laguerre" in sem.mesh.bdy_edge_type)
         #
         # 2D & 3D dd if statement like aboe
         #
         if  sem.mesh.nsd == 2
-            uaux_el_lag      = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngl), Int64(sem.mesh.ngr), qp.neqs)
             rhs_el_lag       = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngl), Int64(sem.mesh.ngr), qp.neqs)
             rhs_diff_el_lag  = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngl), Int64(sem.mesh.ngr), qp.neqs)
             rhs_diffξ_el_lag = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngl), Int64(sem.mesh.ngr), qp.neqs)
@@ -115,7 +115,6 @@ function params_setup(sem,
         #
         # 1D
         #
-        uaux_el_lag      = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), qp.neqs)
         rhs_el_lag       = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), qp.neqs)
         rhs_diff_el_lag  = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), qp.neqs)
         rhs_diffξ_el_lag = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), qp.neqs)
@@ -136,7 +135,7 @@ function params_setup(sem,
         B_lag = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.npoin), qp.neqs)
         flux_lag_gpu = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), 2*qp.neqs)
         source_lag_gpu = KernelAbstractions.zeros(backend, T, Int64(sem.mesh.nelem_semi_inf), Int64(sem.mesh.ngr), qp.neqs)
-    end
+    end=#
 
     #-----------------------------------------------------------------
     for i=1:qp.neqs
@@ -148,13 +147,13 @@ function params_setup(sem,
     end
     
     deps  = KernelAbstractions.zeros(backend, T, 1,1)
-    Δt = inputs[:Δt]
+    Δt    = inputs[:Δt]
     tspan = (T(inputs[:tinit]), T(inputs[:tend]))    
     if (backend == CPU())
-        visc_coeff = inputs[:μ]#(inputs[:νρ], inputs[:νx], inputs[:νy], inputs[:κ], inputs[:κ], inputs[:κ], inputs[:κ])
+        visc_coeff = inputs[:μ]
     else
-        coeffs = zeros(TFloat,qp.neqs)
-        coeffs .= inputs[:μ]
+        coeffs     = zeros(TFloat,qp.neqs)
+        coeffs    .= inputs[:μ]
         visc_coeff = KernelAbstractions.allocate(backend,TFloat,qp.neqs)
         KernelAbstractions.copyto!(backend,visc_coeff,coeffs)
     end
@@ -162,19 +161,15 @@ function params_setup(sem,
     
     if ("Laguerre" in sem.mesh.bdy_edge_type || inputs[:llaguerre_1d_right] || inputs[:llaguerre_1d_left])
         
-        params = (backend, T, F, G, H, S,
-                  uaux, uaux_el, vaux,
+        params = (backend, T,
+                  rhs, fluxes,
+                  uaux, vaux,
                   ubdy, gradu, bdy_flux, #for B.C.
-                  rhs_el, rhs_diff_el,
-                  rhs_diffξ_el, rhs_diffη_el,rhs_diffζ_el,
-                  uprimitive,
                   flux_gpu, source_gpu, qbdy_gpu,
                   q_t, q_ti, fqf, b, B,
                   q_t_lag, q_ti_lag, fqf_lag, b_lag, B_lag, flux_lag_gpu, source_lag_gpu,
                   qbdy_lag_gpu,
-                  RHS, RHS_visc,
                   F_lag, G_lag, S_lag, 
-                  uaux_el_lag,
                   rhs_el_lag,
                   rhs_diff_el_lag,
                   rhs_diffξ_el_lag, rhs_diffη_el_lag,
@@ -188,20 +183,17 @@ function params_setup(sem,
                   Δt, deps, xmax, xmin, ymax, ymin,
                   qp, sem.fx, sem.fy, fy_t, sem.fy_lag, fy_t_lag, laguerre=true)
     else
-        params = (backend, T, F, G, H, S,
-                  uaux, uaux_el, vaux,
-                  ubdy, gradu, bdy_flux, #for B.C.
-                  rhs_el, rhs_diff_el,
-                  rhs_diffξ_el, rhs_diffη_el,rhs_diffζ_el,
-                  uprimitive,
+        params = (backend, T, inputs,
+                  rhs, fluxes, 
+                  uaux, vaux,
+                  ubdy, gradu, bdy_flux,
                   flux_gpu, source_gpu, qbdy_gpu,
-                  q_t, q_ti, fqf, b, B,
-                  RHS, RHS_visc,
+                  #q_t, q_ti, fqf, b, B,
                   SD=sem.mesh.SD, sem.QT, sem.CL, sem.PT, sem.AD, 
                   sem.SOL_VARS_TYPE, 
                   neqs=qp.neqs,
                   sem.basis, sem.ω, sem.mesh, sem.metrics,
-                  inputs, visc_coeff, ivisc_equations,
+                  visc_coeff, ivisc_equations,
                   sem.matrix.M, sem.matrix.Minv,tspan,
                   Δt, deps, xmax, xmin, ymax, ymin,
                   qp, sem.fx, sem.fy, fy_t,laguerre=false)

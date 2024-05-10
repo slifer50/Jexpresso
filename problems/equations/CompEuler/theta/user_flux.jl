@@ -3,7 +3,7 @@ function user_flux!(F::SubArray{TFloat}, G::SubArray{TFloat}, SD::NSD_2D,
                     qe::SubArray{TFloat},
                     mesh::St_mesh,
                     ::CL, ::TOTAL; neqs=4, ip=1)
-
+    
     PhysConst = PhysicalConst{Float64}()
     
     ρ  = q[1]
@@ -64,7 +64,7 @@ function user_flux!(F::SubArray{Float64}, G::SubArray{Float64}, SD::NSD_2D,
                     ::NCL, ::AbstractPert; neqs=4, ip=1)
     
     PhysConst = PhysicalConst{Float64}()
-                
+    
     ρ = q[1]
     u = q[2]
     v = q[3]
@@ -92,5 +92,6 @@ function user_flux(q,PhysConst)
     u  = ρu/ρ
     v  = ρv/ρ
     Pressure = perfectGasLaw_ρθtoP(PhysConst, ρ=ρ, θ=θ)
+
     return Float32(ρu), Float32(ρu*u + Pressure), Float32(ρv*u), Float32(ρθ*u), Float32(ρv),Float32(ρu*v),Float32(ρv*v + Pressure),Float32(ρθ*v)
 end

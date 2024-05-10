@@ -1,7 +1,10 @@
 @kernel function _build_rhs_gpu_v0!(RHS, u, connijk, dψ, ω, M, ngl)
-    ig = @index(Group, Linear)
-    il = @index(Local, Linear)
-    ip = connijk[ig,il,1]
+    #
+    # 1D
+    #
+    ie = @index(Group, Linear) #element
+    il = @index(Local, Linear) #lgl node
+    ip = connijk[ie,il,1]
     
     KernelAbstractions.@atomic RHS[ip] = Float32(0.0)
     DIM = @uniform @groupsize()[1]
@@ -19,6 +22,9 @@
 end
 
 @kernel function _build_rhs_gpu_2D_v0!(RHS, u, qe, x, y, connijk, dξdx, dξdy, dηdx, dηdy, Je, dψ, ω, Minv, flux, source, ngl, neq, PhysConst)
+    #
+    # 2D
+    #
     ie = @index(Group, Linear)
     il = @index(Local, NTuple)
     @inbounds i_x = il[1]

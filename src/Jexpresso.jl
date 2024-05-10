@@ -18,6 +18,7 @@ using LoopVectorization
 using ElasticArrays
 using InternedStrings
 using LinearAlgebra
+using MuladdMacro: @muladd
 using StaticArrays
 using StaticArrays: SVector, MVector, MArray, SMatrix, @SMatrix
 using DiffEqBase
@@ -86,6 +87,8 @@ include(joinpath("kernel", "operators", "rhs_laguerre.jl"))
 include(joinpath("kernel", "operators", "filter.jl"))
 
 include(joinpath( "kernel", "solvers", "Axb.jl"))
+
+include(joinpath( "io", "trixi", "callbacks_step", "alive.jl"))
 
 include(joinpath( "io", "mod_inputs.jl"))
 

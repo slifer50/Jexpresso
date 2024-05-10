@@ -1,14 +1,6 @@
 #---------------------------------------------------------------------------
 # Optimized (more coud possibly be done)
 #---------------------------------------------------------------------------
-function build_rhs_laguerre!(RHS, u, params, time)
-    #
-    # build_rhs()! is called by TimeIntegrators.jl -> time_loop!() via ODEProblem(rhs!, u, tspan, params)
-    #
-   _build_rhs_laguerre!(RHS, u, params, time)
-    
-end
-
 function resetRHSToZero_inviscid_laguerre!(params)
     fill!(params.rhs_el_lag, zero(params.T))   
     fill!(params.RHS_lag,    zero(params.T))
