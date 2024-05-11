@@ -273,7 +273,7 @@ function _build_rhs!(RHS, u, params, time)
         
         resetRHSToZero_viscous!(params, SD)
         
-        viscous_rhs_el!(u, params, SD)
+       @time  viscous_rhs_el!(u, params.fluxes.uprimitive, params, params.mesh.connijk, params.qp.qe, SD)
         
         DSS_rhs!(params.rhs.RHS_visc, params.rhs.rhs_diff_el, params.mesh.connijk, nelem, ngl, neqs, SD, AD)
         
@@ -426,23 +426,23 @@ function inviscid_rhs_el!(u, uprimitive, params,
 end
 
 
-function viscous_rhs_el!(u, params, SD::NSD_2D)
-    
+function viscous_rhs_el!(u, uprimitive, params, connijk, qe, SD::NSD_2D)
+   
     for iel=1:params.mesh.nelem
-        
-     @time   uToPrimitives!(params.neqs,
-                       params.fluxes.uprimitive, u,
-                       params.qp.qe,
-                       params.mesh.connijk,
-                       params.mesh.ngl, params.mesh.npoin,
-                       params.inputs[:δtotal_energy],
-                       iel,
-                       params.PT, params.CL, params.SOL_VARS_TYPE, SD)
 
-        for ieq in params.ivisc_equations
-            _expansion_visc!(params.rhs.rhs_diffξ_el,
+        for j = 1:params.mesh.ngl, i=1:params.mesh.ngl
+        #    ip = connijk[iel,i,j]
+
+      #      user_primitives!(@view(params.uaux[ip,:]),
+      #                       @view(qe[ip,:]),
+      #                       @view(uprimitive[i,j,:]),
+      #                       params.SOL_VARS_TYPE)
+        end
+        
+    #    for ieq in params.ivisc_equations
+      #=      _expansion_visc!(params.rhs.rhs_diffξ_el,
                              params.rhs.rhs_diffη_el,
-                             params.fluxes.uprimitive,
+                             uprimitive,
                              params.visc_coeff,
                              params.ω,
                              params.mesh.ngl,
@@ -451,22 +451,28 @@ function viscous_rhs_el!(u, params, SD::NSD_2D)
                              params.metrics.dξdx, params.metrics.dξdy,
                              params.metrics.dηdx, params.metrics.dηdy,
                              params.inputs, iel, ieq,
-                             params.QT, SD, params.AD)
-        end
+                             params.QT, SD, params.AD)=#
+     #   end
         
     end
     
-    params.rhs.rhs_diff_el .= @views (params.rhs.rhs_diffξ_el .+ params.rhs.rhs_diffη_el)
-    
+    #@time params.rhs.rhs_diff_el .= @views (params.rhs.rhs_diffξ_el .+ params.rhs.rhs_diffη_el)
+   
 end
 
 
-function viscous_rhs_el!(u, params, SD::NSD_3D)
+function viscous_rhs_el!(u, uprimitive, params, connijk, qe, SD::NSD_3D)
     
-    for iel=1:params.mesh.nelem        
-        uToPrimitives!(params.neqs, params.fluxes.uprimitive, u, params.qp.qe, params.mesh.connijk, params.mesh.ngl, params.mesh.npoin, params.inputs[:δtotal_energy], iel, params.PT, params.CL, params.SOL_VARS_TYPE, SD)
+    for iel=1:params.mesh.nelem
+
+        for k = 1:params.mesh.ngl, j = 1:params.mesh.ngl, i=1:params.mesh.ngl
+            ip = connijk[iel,i,j,k]
+
+            user_primitives!(@view(params.uaux[ip,:]), @view(qe[ip,:]), @view(uprimitive[i,j,k,:]), params.SOL_VARS_TYPE)
+        end
+
         for ieq in params.ivisc_equations
-            _expansion_visc!(params.rhs.rhs_diffξ_el, params.rhs.rhs_diffη_el, params.rhs.rhs_diffζ_el, params.fluxes.uprimitive, 
+            _expansion_visc!(params.rhs.rhs_diffξ_el, params.rhs.rhs_diffη_el, params.rhs.rhs_diffζ_el, uprimitive, 
                              params.visc_coeff, params.ω, params.mesh.ngl, params.basis.dψ, params.metrics.Je, params.metrics.dξdx, params.metrics.dξdy, params.metrics.dξdz, 
                              params.metrics.dηdx, params.metrics.dηdy, params.metrics.dηdz, params.metrics.dζdx,params.metrics.dζdy, params.metrics.dζdz, params.inputs, iel, ieq, params.QT, SD, params.AD)        
         end
