@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+pages = ["index.md",
+         "Performance" => "features/performance.md",
+         "Tutorials" => "tutorials/theta.md"
+         ]
+=======
 pages = Any["index.md",
             "getting_started.md",
             "Features" => Any["features/performance.md"],
@@ -11,3 +17,4 @@ pages = Any["index.md",
 
 =#      
 
+>>>>>>> sm/gpu
