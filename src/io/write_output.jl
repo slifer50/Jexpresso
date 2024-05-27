@@ -138,7 +138,6 @@ function write_output(sol::SciMLBase.LinearSolution, SD::NSD_2D, mesh::St_mesh, 
             u = KernelAbstractions.allocate(CPU(), TFloat, Int64(mesh.npoin))
             KernelAbstractions.copyto!(CPU(),u, sol.u[:])
             convert_mesh_arrays_to_cpu!(SD, mesh, inputs)
-            @info u
             plot_triangulation(SD, mesh, u, title,  OUTPUT_DIR, inputs;)
         end
     end

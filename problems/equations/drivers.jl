@@ -74,7 +74,7 @@ function driver(inputs::Dict,        #input parameters from src/user_input.jl
             KernelAbstractions.synchronize(inputs[:backend])
         end
         
-        @time solution = solveAx(-sem.matrix.L, RHS, inputs[:ode_solver]) 
+        @time solution = solveAx(-sem.matrix.L, RHS, inputs[:backend], inputs[:ode_solver]) 
 
         write_output(solution, sem.mesh.SD, sem.mesh, OUTPUT_DIR, inputs, inputs[:outformat]; nvar=params.qp.neqs)
         

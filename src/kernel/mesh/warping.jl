@@ -6,6 +6,8 @@ function warp_mesh!(mesh,inputs)
   ztop = maximum(mesh.y)#30000.0
   zsurf = zeros(Float64,mesh.npoin)
   sigma = zeros(Float64,mesh.npoin)
+  sleve = zeros(Float64,mesh.npoin)
+  hybrid = zeros(Float64,mesh.npoin)
   for i=1:mesh.npoin
     sigma[i] = mesh.y[i]
     
@@ -32,15 +34,29 @@ function warp_mesh!(mesh,inputs)
   end
 
   for ip = 1:mesh.npoin
+    # sigma type coordinate 
+     
     sigma[ip] = mesh.y[ip]
-    #if (mesh.y[ip] < 10000.0)  
+    if (mesh.y[ip] < 10000.0)  
       z = (ztop - zsurf[ip])/ztop * sigma[ip] + zsurf[ip]
       mesh.y[ip] = z
-    #=elseif (mesh.y[ip] < 15000.0)
+    elseif (mesh.y[ip] < 15000.0)
       factor = (15000-mesh.y[ip])/5000.0
       z = (ztop - factor*zsurf[ip])/ztop * sigma[ip] + factor*zsurf[ip]
       mesh.y[ip] = z 
-    end=#
+    end
+    # hybrid
+    #=s = 3000#inputs[:s_hybrid]
+    hybrid[ip] = mesh.y[ip]
+    z = hybrid[ip] + zsurf[ip] * (sinh((ztop - hybrid[ip])/s))/sinh(ztop/s)
+    mesh.y[ip] = z
+    =#
+    # SLEVE
+    #=s1 = 5000#inputs[:s1_sleve]
+    s2 = 2000#inputs[:s2_sleve]
+    sleve[ip] = mesh.y[ip]
+    z = sleve[ip] + zsurf[ip] * ((sinh((ztop - sleve[ip])/s1))/sinh(ztop/s1) + (sinh((ztop - sleve[ip])/s2))/sinh(ztop/s2))
+    mesh.y[ip] = z=#
   end 
   
   #=for iedge = 1:size(mesh.bdy_edge_in_elem,1)

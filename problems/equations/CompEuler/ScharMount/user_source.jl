@@ -87,7 +87,7 @@ function user_source!(S::SubArray{Float64}, q::SubArray{Float64}, qe::SubArray{F
     # distance from the boundary. xs in Restelli's thesis
     dsy = (ymax - ymin)/(nely*(ngl - 1))# equivalent grid spacing
     dbl = ymax - y
-    zs = 12000.0#ymax - 20000.0
+    zs = 15000.0#ymax - 20000.0
     dsx = (xmax - xmin)/(nely*(ngl - 1))# equivalent grid spacing
     dbx = min(xmax - x,x-xmin)
     xr = 20000.0
@@ -99,7 +99,7 @@ function user_source!(S::SubArray{Float64}, q::SubArray{Float64}, qe::SubArray{F
     else
         betay_coe = 0.0
     end
-    ctop= 1.0*betay_coe
+    ctop= 0.2*betay_coe
 
     if (x > xr)#nsponge_points * dsy) #&& dbl >= 0.0)
         betaxr_coe =  sinpi(0.5*(x-xr)/(xmax-xr))^2#1.0 - tanh(dbl/5000.0)#(nsponge_points * dsy))

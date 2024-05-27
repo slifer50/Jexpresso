@@ -340,7 +340,7 @@ function allocate_gpuAux_lag(SD, nelem_semi_inf, nedges_bdy, nfaces_bdy, ngl, ng
         elseif SD == NSD_2D()
             dims1 = (Int64(nelem_semi_inf), Int64(ngl), Int64(ngr), 2*neqs)
             dims2 = (Int64(nelem_semi_inf), Int64(ngl), Int64(ngr),   neqs)
-            dims3 = (Int64(nedges_bdy),     Int64(ngl),               neqs)
+            dims3 = (Int64(nelem_semi_inf), Int64(ngl), Int64(ngr),   neqs)
         elseif SD == NSD_3D()
             error(" globalStructs.jl: --> 3D Laguerre not implemented yet!")
         end

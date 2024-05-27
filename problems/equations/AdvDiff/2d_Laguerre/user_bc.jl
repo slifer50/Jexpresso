@@ -83,10 +83,10 @@ end
 
 function user_bc_dirichlet_gpu(q,qe,x,y,t,nx,ny,qbdy,lpert)
     T = eltype(q)
-    if (y < 0.01)
+    if (y < T(0.01))
         return T(0.0)#0.025*sinpi(2*30*t/5000.0)
     end
-    if (y < 10.0 && abs(x) >9.9)
+    if (y < T(10.0) && abs(x) > T(9.9))
         return(0.0)
     end
     return T(qbdy[1])
