@@ -7,12 +7,12 @@ function user_inputs()
         :ode_solver           => SSPRK54(), #ORK256(),#SSPRK33(), #SSPRK33(), #SSPRK54(),
         :Δt                   => 0.4,
         :tinit                => 0.0,
-        :tend                 => 1000.0,
+        :tend                 => 1000,
         #:tinit                => 100.0,
         #:tend                 => 1000.0,
         #:lrestart             => true,
         :restart_input_file_path => "./output/CompEuler/theta/output-19Nov2023-115126",
-        :ndiagnostics_outputs => 6,
+        :ndiagnostics_outputs => 20,
         :case                 => "rtb",
         :lsource              => true, 
         #:backend              => MetalBackend(),
@@ -26,13 +26,13 @@ function user_inputs()
         # Physical parameters/constants:
         #---------------------------------------------------------------------------
         :lvisc                => true, #false by default NOTICE: works only for Inexact
-        :ivisc_equations      => (1, 2, 3, 4),
+        :ivisc_equations      => [1, 2, 3, 4],
         :μ                   => [0.0, 20.0, 20.0, 60.0], #horizontal viscosity constant for momentum
         #---------------------------------------------------------------------------
         # Mesh paramters and files:
         #---------------------------------------------------------------------------
         :lread_gmsh          => true, #If false, a 1D problem will be enforced
-        #:gmsh_filename       => "./meshes/gmsh_grids/hexa_circle.msh",
+        #:gmsh_filename       => "./meshes/gmsh_grids/square_UNSTR_20el.msh", #for nop=4
         :gmsh_filename       => "./meshes/gmsh_grids/hexa_TFI_RTB20x20.msh", #for nop=4
         #---------------------------------------------------------------------------
         # Filter parameters
@@ -46,6 +46,7 @@ function user_inputs()
         #---------------------------------------------------------------------------
         :outformat           => "vtk",
         :loverwrite_output   => true,
+        :lwrite_initial      => true,
         :output_dir          => "./output/",
         :loutput_pert        => true,  #this is only implemented for VTK for now
         #---------------------------------------------------------------------------

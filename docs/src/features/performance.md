@@ -32,8 +32,10 @@ v_{xx} + v_{zz}\\
 \theta_{xx} + \theta_{zz}
 \end{bmatrix}.$$
 
+## Speed
 
 Table: Wall clock time of Jexpresso vs a legacy F90/Modern Fortran code for numerical weather prediction. Simulated 100 seconds of a rising-thermal-bubble test. The name of the time integrators may be different for the two codes so that the notation jexpresso/numa is used to indicate both. The wall clock times are to be taken with a $\pm 0.2$ due to a small variability from one simulation to the next one. 
+
 Timing was measured using Julia 1.9.3 on a Macbook Air M1 2020, with macOS Big Sur Version 11.6.
 
 | Time integrator           | max $\Delta t$ (s)        | Effective resolution (m)  | Order	         | ${\color{red}{Jexpresso}}$ (s)   | ${\color{blue}{F90}}$ (s)|
@@ -49,7 +51,6 @@ Timing was measured using Julia 1.9.3 on a Macbook Air M1 2020, with macOS Big S
 
 
 ## Mass conservation
-
 
 Table: Mass conservation of the **advective vs flux forms** of the equations and sensitivity to the time integrators of  DifferentialEquations.jl for the RTB at t = 1000 s viscous. Results are for inexact integration.
 
